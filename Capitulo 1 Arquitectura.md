@@ -13,5 +13,6 @@
 > Programas que se valen de otros programas para funcionar. Como el compilador de C (cc).
 
 
+
 ## Arquitectura del Sistema operativo Unix
 
