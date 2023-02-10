@@ -16,3 +16,9 @@
 
 ## Arquitectura del Sistema operativo Unix
 
+La arquitectura Unix esta centrada en dos conceptos, los ficheros y los procesos. El nucleo es el encargado de facilitarnos los servicios relacionados con el control de procesos y los ficheros.
+La arquitectura de Unix vamos a dividirla en tres niveles, *Hardware, núcleo y usuario*.  
+
+![bloques_del_nucleo](https://user-images.githubusercontent.com/4338310/218033961-2323069f-8895-4669-977b-ea01cee51cb5.png)
+
+
