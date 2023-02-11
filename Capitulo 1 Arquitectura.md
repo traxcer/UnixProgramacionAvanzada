@@ -21,4 +21,37 @@ La arquitectura de Unix vamos a dividirla en tres niveles, *Hardware, núcleo y 
 
 ![bloques_del_nucleo](https://user-images.githubusercontent.com/4338310/218033961-2323069f-8895-4669-977b-ea01cee51cb5.png)
 
+Las llamadas al sistema y su biblioteca asociada representan la frontera entre los programas del usuario y el núcleo. La **biblioteca asociada** a las llamadas es el mecanismo mediante el cual podemos invocar una llamada desde un programa C. Esta biblioteca se enlaza por defecto al compilar cualquier programa C y se encuentra
+en el fichero **/usr/lib/libc.a**.
+
+Las llamadas al sistema se ejecutan en modo protegido (modo kernel o supervisor), y para entrar en este modo hay que ejecutar una sentencia en código máquina conocida como interrupción software (trap).
+
+**El núcleo** está dividido en dos subsistemas principales: ***subsistema de ficheros*** y ***subsistema de control de procesos***. 
+
+El subsistema de ficheros controla los recursos del sistema de ficheros y tiene funciones como reservar espacio para los ficheros, administrar el espacio libre, controlar el acceso a los ficheros, permitir el intercambio de datos entre los ficheros y el usuario, etc. Los procesos interaccionan con este subsistema a través de unas llamadas específicas (open, read, write, status, chown, etc.).
+
+- El ***subsistema de ficheros*** se comunica con los dispositivos de almacenamiento secundario —discos duros, unidades de cinta, etc.— a través de los manejadores de dispositivo (device drivers). Los manejadores de dispositivo se encargan de proporcionar el protocolo de comunicación (handshake) entre el núcleo y los periféricos. Se consideran *dos tipos de dispositivos según la forma de acceso*: 
+  
+  - ***dispositivos modo bloque*** (block devices): El acceso a los dispositivos en modo bloque se lleva a cabo con la intervención de memorias intermedias (buffers) que mejoran enormemente la velocidad de transferencia. 
+  
+  - ***dispositivos modo carácter*** (row devices): El acceso a dispositivos en modo carácter se lleva a cabo de forma directa, sin la intervención de estas memorias.
+
+Un mismo dispositivo físico puede ser manejado **tanto en modo bloque como en modo carácter**, dependiendo de qué manejador usemos para acceder a él.
+
+- El ***subsistema de control de procesos*** es el responsable de la planificación de los procesos —scheduling o dispatching—, su sincronización, comunicación entre los mismos (IPC-inter process comunication) y del control de la memoria principal. Algunas de las llamadas usadas para controlar procesos son: fork, exec, exit, wait, brk, signal, etc.
+
+  - El ***módulo de gestión de memoria*** se encarga de controlar qué procesos están cargados en la memoria principal en cada instante. Si en un momento determinado no hay suficiente memoria principal para todos los procesos que lo solicitan, el gestor de memoria debe recurrir a mecanismos de intercambio (swapping) para que todos los procesos tengan derecho a un tiempo mínimo de ocupación de la memoria y se puedan ejecutar. El intercambio consiste en llevar los procesos cuyo tiempo de ocupación de la memoria expira a una memoria secundaria en el disco (área de swap) que se monta como un sistema de ficheros aparte, y traer de esa memoria secundaria los procesos a los que se les asigna tiempo de ocupación de la memoria principal. Al módulo gestor de memoria se le conoce también como *intercambiador* (swapper).
+
+  - El ***distribuidor*** (también despachador o scheduler) se encarga de gestionar el tiempo de CPU que tiene asignado cada proceso. El distribuidor entra en ejecución controlado por la interrupción del reloj y decide si el proceso actual tiene derecho a seguir ejecutándose (esto depende de su prioridad y de sus privilegios) o ha de conmutarse de contexto (asignarle la CPU a otro proceso). La comunicación entre procesos puede realizarse de forma asíncrona (señales) o
+síncrona (colas de mensajes, semáforos).
+
+  - El ***módulo de control del hardware*** es la parte del núcleo encargada del manejo de las interrupciones y de la comunicación con la máquina. Los dispositivos pueden interrumpir a la CPU mientras está ejecutando un proceso. Si esto ocurre, el núcleo debe reanudar la ejecución del proceso después de atender a la interrupción. Las interrupciones no son atendidas por procesos, sino por funciones especiales, codificadas en el núcleo, que son invocadas durante la ejecución de cualquier proceso.
+
+
+
+
+## Interfaz de las llamas al Sistema
+
+
+
 
