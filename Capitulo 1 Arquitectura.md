@@ -52,10 +52,23 @@ síncrona (colas de mensajes, semáforos).
 
 ## Interfaz de las llamas al Sistema
 
-Las llamadas al sistema de unix tienen un formato estándar, ka documentación de las llamadas se encuentra en la **sección 2 de las páginas
+Las llamadas al sistema de unix tienen un formato estándar, la documentación de las llamadas se encuentra en la **sección 2 de las páginas
 del manual de unix*.
 
 La forma de averiguar si la llamada a la función ha fallado es analizar el valor que devuelve. Este valor es -1 de forma estándar para todas las llamadas cuando se produce un error. Para averiguar cuál es el error producido, hemos de consultar el valor que toma la variable externa errno. 
 En el fichero de cabecera <errno.h> hay una descripción de todos los valores que puede tomar errno. Los códigos de error tendrán un significado u otro según la llamada que los haya generado, por ello es recomendable consultar el manual para clarificar su significado.
 
+A continuación se muestra un programa que visualiza por pantalla todos los códigos de error del sistema y una descripción asociada a cada uno de ellos.
+
+Programa 1.1: Listado de códigos de error (errno.c)
+```
+#include <stdio.h>
+  main (){
+    int i;
+    /∗ En el array sys_errlist hay una descripción corta asociada a cada número
+       de error, sys_nerr es el total de elementos del array sys_errlist. ∗/
+    for (i = 0; i < sys_nerr; i++)
+      printf ("%d: %s\n", i, sys_errlist [i]);
+}
+```
 
