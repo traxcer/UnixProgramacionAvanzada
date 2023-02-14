@@ -52,6 +52,10 @@ síncrona (colas de mensajes, semáforos).
 
 ## Interfaz de las llamas al Sistema
 
+Las llamadas al sistema de unix tienen un formato estándar, ka documentación de las llamadas se encuentra en la **sección 2 de las páginas
+del manual de unix*.
 
+La forma de averiguar si la llamada a la función ha fallado es analizar el valor que devuelve. Este valor es -1 de forma estándar para todas las llamadas cuando se produce un error. Para averiguar cuál es el error producido, hemos de consultar el valor que toma la variable externa errno. 
+En el fichero de cabecera <errno.h> hay una descripción de todos los valores que puede tomar errno. Los códigos de error tendrán un significado u otro según la llamada que los haya generado, por ello es recomendable consultar el manual para clarificar su significado.
 
 
