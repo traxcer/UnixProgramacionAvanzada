@@ -72,3 +72,14 @@ Programa 1.1: Listado de códigos de error (errno.c)
 }
 ```
 
+Existen dos formas de obtener el mensaje de error asociado a la variable errno: 
+- la primera es usar errno como índice para acceder al array sys_errlist y obtener una cadena de caracteres descriptiva del error; 
+- la segunda es usar la función perror cuya declaración es:
+  ```
+    #include <stdio.h>
+    void perror (char ∗str);
+    ```
+    y la forma de invocarla es perror ("Mi mensaje"); i, por ejemplo, errno vale 2, por pantalla se desplegará el mensaje,
+    **Mi mensaje: No such file or directory** donde '*No such file or directory*' es el mensaje asociado al código de error número 2.
+    
+    
