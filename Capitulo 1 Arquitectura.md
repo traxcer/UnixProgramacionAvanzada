@@ -79,7 +79,6 @@ Existen dos formas de obtener el mensaje de error asociado a la variable errno:
     #include <stdio.h>
     void perror (char ∗str);
     ```
-    y la forma de invocarla es perror ("Mi mensaje"); i, por ejemplo, errno vale 2, por pantalla se desplegará el mensaje,
-    **Mi mensaje: No such file or directory** donde '*No such file or directory*' es el mensaje asociado al código de error número 2.
-    
-    
+    y la forma de invocarla es ***perror ("Mi mensaje")***; 
+    Si, por ejemplo, errno vale 2, por pantalla se desplegará el mensaje, **Mi mensaje: No such file or directory** donde '*No such file or directory*' es el mensaje asociado al código de error número 2.
+
