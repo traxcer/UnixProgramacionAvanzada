@@ -31,17 +31,21 @@ trabaja con el fichero.
 Los sistemas de ficheros suelen estar situados en dispositivos de almacenamiento modo bloque, tales como cintas o discos. Las cintas tienen un tiempo de acceso mucho
 más alto que los discos, por ello es poco práctico instalar un sistema de ficheros sobre ellas. Sin embargo, son muy útiles para realizar copias de seguridad 
 (backup)* de un sistema ya instalado en disco.
+
 Lo normal es que un sistema unix se arranque —boot— desde cinta o CDROM cuando queremos instalarlo por primera vez sobre un disco o cuando, tras producirse una quiebra
 *crash* del sistema, queremos restaurarlo a su situación anterior *proceso conocido como *(**recovery system**)*. En el resto de nuestra discusión vamos a considerar 
 que los sistemas de ficheros están instalados sobre discos.
 Un sistema unix puede manejar **uno o varios discos físicos**, cada uno de los cuales puede contener **uno o varios sistemas de ficheros**. ***Los sistemas de ficheros son particiones lógicas del disco***.
+
 Hacer que un disco físico contenga varios sistemas de ficheros permite una administración más segura, ya que si uno de los sistemas de ficheros se daña, perdiéndose la
 información que hay en él, este accidente no se habrá transmitido al resto de los sistemas de ficheros que hay en el disco y podremos seguir trabajando con ellos para 
 intentar una restauración o una reinstalación.
+
 **El núcleo del sistema trabaja con el sistema de ficheros a un nivel lógico y no trata directamente con los discos a nivel físico**. Cada disco es considerado como un 
 dispositivo lógico que tiene asociados unos números de dispositivo *(minor number y major number)*. Estos números se utilizan para indexar, dentro de una tabla de 
 funciones, la que tenemos que emplear para acceder al manejador del disco. El manejador del disco se va a encargar de transformar las direcciones lógicas *(núcleo)* de 
 nuestro sistema de ficheros a direcciones físicas del disco.
+
 **Un sistema de ficheros se compone de una secuencia de bloques lógicos**, cada uno de los cuales tiene un tamaño fijo. **El tamaño de cada bloque es el mismo para 
 todo el sistema de ficheros y suele ser múltiplo de 512 bytes**. A pesar de que el tamaño de un bloque es homogéneo en un sistema de ficheros, puede variar de un 
 sistema a otro dentro de una misma configuración unix con varios sistemas de ficheros. **El tamaño elegido para el bloque va a influir en las prestaciones globales** del sistema. Por un lado, interesa que los bloques sean grandes para que la velocidad de transferencia entre el disco y memoria sea grande. Sin embargo, si los bloques
