@@ -89,3 +89,53 @@ Naturalmente, antes de apagar el sistema también hay que actualizar el superblo
 
 
 
+### Nodos índice (inodes)
+
+Cada fichero en un sistema unix tiene asociado un nodo-i. El nodo-i contiene la información necesaria para que un proceso pueda acceder al fichero. 
+Esta información incluye: propietario, derechos de acceso, tamaño, localización en el sistema de ficheros, etc.
+
+La lista de nodos-i se encuentra situada en los bloques que hay a continuación del superbloque. Durante el proceso de arranque del sistema, el núcleo lee la lista de 
+nodos-i del disco y carga una copia en memoria, conocida como tabla de nodos-i.
+
+Las manipulaciones que haga el subsistema de ficheros (*parte del código del núcleo*) sobre los ficheros van a involucrar a la tabla de nodos-i pero no a la lista de 
+nodos-i. Mediante este mecanismo se consigue una mayor velocidad de acceso a los ficheros, ya que la tabla de nodos-i está cargada siempre en memoria. En el párrafo 
+anterior vimos que hay un demonio del sistema (*syncer*) que se encarga de actualizar periódicamente el contenido de la lista de nodos-i con la tabla de nodos-i.
+
+En el fichero de cabecera **<sys/ino.h>** se declara la estructura C ***struct dinode*** que describe la información de un nodo-i. Los campos que componen un nodo-i son los siguientes:
+- Identificador del propietario del fichero. La posesión se divide entre un propietario individual y un grupo de propietarios y define el conjunto de usuarios que 
+tienen derecho de acceso al fichero. El superusuario tiene derecho de acceso a todos los ficheros del sistema.
+- Tipo de fichero. Los ficheros pueden ser ordinarios de datos, directorios, especiales de dispositivo (*en modo carácter o en modo bloque*) y tuberías (*o FIFO*).
+- Tipo de acceso al fichero. El sistema protege los ficheros estableciendo tres niveles de permisos: permisos del propietario, del grupo de usuarios al que pertenece 
+el propietario y del resto de los usuarios (*conocido también como el mundo*). Cada clase de usuarios puede tener habilitados o deshabilitados los derechos de lectura,
+escritura y ejecución. Para los directorios, el derecho de ejecución significa poder acceder o no a los ficheros que contiene.
+- Tiempos de acceso al fichero. Dan información sobre la fecha de la última modificación del fichero, la última vez que se accedió a él y la última vez que se 
+modificaron los datos de su nodo-i.
+- Número de enlaces del fichero. Representa el total de los nombres que el fichero tiene en la jerarquía de directorios. Como veremos más adelante, un fichero puede
+- tener asociados diferentes nombres que correspondan a diferentes rutas y a través de los cuales accedamos a un mismo nodo-i y por consiguiente a los mismos bloques 
+de datos.
+- Entradas para los bloques de dirección de los datos de un fichero. Si bien los usuarios ven los datos de un fichero como si fuesen una secuencia de bytes contiguos, 
+el núcleo puede almacenarlos en bloques que no tienen por qué ser contiguos. En los bloques de dirección es donde se especifican los bloques de disco que contienen los datos del fichero.
+- Tamaño del fichero. Los bytes de un fichero se pueden direccionar indicando un desplazamiento a partir de la dirección de inicio del fichero —desplazamiento 0—.
+El tamaño del fichero es igual al desplazamiento del byte más alto, incrementado en una unidad. Por ejemplo, si un usuario crea un fichero y escribe en él un solo byte
+en la posición 2.000, el tamaño del fichero es 2.001 bytes.
+
+Hay que hacer notar que el **nombre del fichero no queda especificado en su nodo-i**. Como veremos más adelante, es en los ficheros de tipo directorio donde a cada 
+nombre de fichero se le asocia su nodo-i correspondiente. 
+También hay que reseñar la diferencia entre escribir el contenido de un nodo-i en disco y escribir el contenido del fichero. El contenido del fichero (*sus datos*) 
+cambia sólo cuando se escribe en él. El contenido de un nodo-i cambia cuando se modifican los datos del fichero o la situación administrativa del mismo (*propietario, 
+permisos, enlaces, etc.*)
+La tabla de nodos-i contiene la misma información que la lista de nodos-i, junto con la siguiente información adicional:
+- El estado del nodo-i, que indica:
+  - si el nodo-i está bloqueado;
+  - si hay algún proceso esperando a que el nodo-i quede desbloqueado;
+  - si la copia del nodo-i que hay en memoria difiere de la que hay en el disco;
+  - si la copia de los datos del fichero que hay en memoria difiere de los datos que hay en el disco (*caso de la escritura en el fichero a través del buffer caché*).
+- El número de dispositivo lógico del sistema de ficheros que contiene al fichero.
+- El número de nodo-i. Como los nodos-i se almacenan en el disco en un array lineal, al cargarlo en memoria, el núcleo le asigna un número en función de su posición en 
+el array. El nodo-i del disco no necesita esta información.
+- Punteros a otros nodos-i cargados en memoria. El núcleo enlaza los nodos-i sobre una cola dispersa —cola hash— y sobre una lista libre. Las claves de acceso a la 
+cola dispersa nos las dan el número de dispositivo lógico del nodo-i y el número de nodo-i.
+- Un contador que indica el número de copias del nodo-i que están activas (*por ejemplo, porque el fichero está abierto por varios procesos*).
+
+
+
