@@ -68,3 +68,24 @@ contenido de los ficheros a los que hace referencia la lista de nodos-i. Cada un
 ocupa totalmente como si no.
 
 
+
+### El superbloque
+
+Como hemos visto anteriormente, en el superbloque está la descripción del estado del sistema de ficheros. En el fichero de cabecera **<sys/filsys.h>** hay declarada una estructura en C que describe el significado del contenido del superbloque. El superbloque contiene, entre otras, la siguiente información:
+
+- Tamaño del sistema de ficheros.
+- Lista de bloques libres disponibles.
+- Índice del siguiente bloque libre en la lista de bloques libres.
+- Tamaño de la lista de nodos-i.
+- Total de nodos-i libres.
+- Lista de nodos-i libres.
+- Índice del siguiente nodo-i libre en la lista de nodos-i libres.
+- Campos de bloqueo de elementos de las listas de bloques libres y de nodos-i libres. Estos campos se emplean cuando se realiza una petición de bloque o de nodo-i libre.
+- Indicador que informa si el superbloque ha sido modificado o no.
+
+Cada vez que, desde un proceso, se accede a un fichero, es necesario consultar el superbloque y la lista de nodos-i. Como el acceso a disco suele degradar bastante el
+tiempo de ejecución de un programa, lo normal es que el núcleo realice la E/S con el disco a través de un buffer caché y que el sistema tenga en memoria una copia del superbloque y de la lista de nodos-i. Esto puede plantear problemas de consistencia de los datos, ya que una actualización en memoria del superbloque y de la tabla de nodos-i no implica una actualización inmediata en disco. La solución a este problema consiste en realizar periódicamente una actualización en disco de los datos de administración que mantenemos en memoria. De esta tarea se encarga un demonio que se arranca al inicializar el sistema.
+Naturalmente, antes de apagar el sistema también hay que actualizar el superbloque y las tablas de nodos-i del disco. El programa shutdown se encarga de esta tarea y ***es fundamental tener presente que no se debe realizar una parada del sistema sin haber invocado previamente al programa shutdown***, porque de lo contrario el sistema de ficheros podría quedar seriamente dañado.
+
+
+
