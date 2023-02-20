@@ -266,3 +266,175 @@ facilidades de bloqueo de ficheros y de gestión de semáforos, para controlar e
 
 Los ficheros ordinarios, como tales, no tienen nombre y el acceso a ellos se realiza a través de los nodos-i.
 
+### Directorios
+Los directorios son los ficheros que nos permiten darle una estructura jerárquica a los sistemas de ficheros de unix. Su función fundamental consiste en establecer la 
+relación que existe entre el nombre de un fichero y su nodo-i correspondiente.
+
+#### Estructura de un directorio en el unix System V
+
+En esta versión de unix, un directorio es un fichero cuyos datos están organizados como una secuencia de entradas, cada una de las cuales contiene un número de nodo-i 
+y el nombre de un fichero que pertenece al directorio. Al par [nodo-i]↔[nombre de fichero] se le conoce como enlace y puede haber varios nombres de ficheros —
+distribuidos por la jerarquía de directorios— que estén enlazados con un mismo nodo-i.
+
+El tamaño de cada entrada del directorio es de 16 bytes; dos dedicados al nodo-i y 14 dedicados al nombre del fichero. En la figura 2.5 podemos ver la estructura 
+típica de un directorio.
+
+![Captura de pantalla 2023-02-20 a las 7 51 19](https://user-images.githubusercontent.com/4338310/220033784-e55b85f7-6c82-496f-bee2-8a76b8f92653.png)
+
+Las dos primeras entradas de un directorio reciben los nombres (.) y (..). El fichero . tiene asociado el nodo-i correspondiente al directorio actual y al fichero .. 
+se le asocia el nodo-i del directorio padre del actual. Estas dos entradas están presentes en todo directorio, y en el caso del directorio raíz (/), el programa mkfs 
+make file system, programa mediante el cual se crea un sistema de ficheros— se encarga de que el fichero (..) se refiera al propio directorio raíz.
+El núcleo maneja los datos de un directorio con los mismos procedimientos empleados para acceder a los datos de ficheros ordinarios, usando la estructura nodo-i y los 
+bloques de acceso directos e indirectos.
+
+Los procesos pueden leer el contenido de un directorio como si se tratase de un fichero de datos, sin embargo no pueden modificarlos. El derecho de escritura en un 
+directorio está reservado al núcleo. Esto es una medida de seguridad tomada para evitar que una manipulación incorrecta de un directorio pueda destruir un sistema de ficheros.
+
+No hay razones estructurales para impedir la creación de múltiples enlaces a un directorio, sin embargo, esta posibilidad complicaría bastante la escritura de los 
+programas que recorren el sistema de ficheros, por lo que el núcleo lo prohibe.
+
+Los permisos de acceso a un directorio tienen los siguientes significados:
+- Lectura, permite que un proceso lea ese directorio.
+- Escritura, permite a un proceso crear una nueva entrada en el directorio o borrar alguna ya existente. Esto deberá hacerlo a través de las llamadas: creat, mknod,
+link o unlink.
+- Ejecución, autoriza a un proceso para buscar el nombre de un fichero dentro del directorio.
+
+#### Estructura de un directorio en el sistema bsd
+
+El concepto de directorio desempeña la misma función en el unix de Berkeley que en el de AT&T. La función principal es la de establecer los enlaces entre los nombres 
+de los ficheros y los nodos-i. La diferencia entre los directorios de las versiones System V y bsd es que en ésta los nombres de los ficheros pueden ser más largos, 
+hasta 255 caracteres, y no se reserva un espacio fijo de bytes para cada entrada del directorio.
+
+Los directorios se encuentran situados en unidades conocidas como bloques de directorio (*chunks*) tal y como se muestra en la figura.
+
+![Captura de pantalla 2023-02-20 a las 7 55 27](https://user-images.githubusercontent.com/4338310/220034485-aadfee29-f7a9-4533-800a-28ad56109f9b.png)
+
+El tamaño de un bloque de directorio se elige de tal forma que pueda ser transferido en una sola operación con el disco. Esto permite actualizar los directorios en 
+accesos atómicos —ningún proceso puede interrumpir para actualizar un directorio mientras haya otro que lo esté haciendo—.
+
+Cada bloque de directorio se compone de entradas de directorio de tamaño variable. No se permite que una entrada esté distribuida en más de un bloque. Los tres primeros campos de una entrada de directorio son de tamaño fijo y contienen:
+1. El tamaño de la entrada.
+2. La longitud del nombre del fichero al que se refiere la entrada.
+3. El número del nodo-i asociado al fichero.
+
+El resto de la entrada es un campo de longitud variable que contiene una cadena de caracteres terminada con el carácter nulo. Esta cadena es el nombre del fichero y su
+longitud máxima permitida es de 255 caracteres.
+
+El espacio libre en un directorio se registra bajo en una o varias entradas que lo acumulan en su campo tamaño de la entrada. Estas entradas se reconocen porque su
+tamaño es mayor que el necesario para almacenar sus campos de tamaño fijo más el campo nombre del fichero.
+
+Cuando se borra una entrada de un directorio, el sistema añade el espacio que queda libre a la entrada anterior, si ésta pertenece al mismo bloque de directorio que la 
+borrada, aumentado así el tamaño de la entrada. Si la primera entrada de un bloque de directorio está libre, el número de nodo-i que almacena esa entrada es cero, para 
+indicar que no está reservada por ningún fichero.
+
+#### Acceso al contenido de un directorio
+
+Como ya hemos indicado, los procesos pueden leer el contenido de un directorio, pero no pueden modificarlo. Este privilegio está reservado exclusivamente al núcleo del 
+sistema. 
+
+Para leer un directorio podemos utilizar las mismas llamadas que empleamos para los ficheros ordinarios —open, read, lseek, close, etc.— El sistema bsd ofrece una 
+interfaz más cómoda para movernos por el interior de la jerarquía de directorios. Esta interfaz también ha sido adoptada por el unix System V, y sus funciones son: 
+opendir, readdir, rewindir, closedir, seekdir y telldir. Estas funciones no son parte del conjunto de llamadas al sistema, sino de la biblioteca estándar de E/S —
+consulte directory(3C) y el § 4.1.5 pág. 122—.
+
+Las funciones anteriores pueden codificarse a partir de las llamadas de manejo de ficheros [Kernighan & Ritchie, ], lo cual ofrece la ventaja de poder ser emuladas 
+sobre una red o incluso por un sistema no unix.
+
+#### Conversión de ruta de acceso a nodo-i
+
+Desde el punto de vista del usuario, los ficheros se sitúan en la jerarquía de directorios y se nombran mediante su ruta de acceso. Llamadas como open, chdir o link 
+reciben como parámetro de entrada la ruta de acceso de un fichero y no su nodo-i. El núcleo es quien se encarga de traducir la ruta de acceso de un fichero a su nodo-i 
+correspondiente.
+
+El algoritmo que realiza la transformación —llamado namei— se encarga de analizar los componentes de la ruta de acceso y de leer los nodos-i intermedios necesarios 
+para verificar que se trata de una ruta correcta y que el fichero realmente existe.
+
+Si la ruta es absoluta, la búsqueda del nodo-i del fichero se iniciará en el directorio raíz. Si la ruta es relativa, la búsqueda se iniciará en el directorio de 
+trabajo actual que tiene asociado el proceso que quiere acceder al fichero.
+
+A medida que se van recorriendo los nodos-i intermedios, se verifican los permisos para comprobar si el proceso tiene derechos de acceso a los directorios intermedios.
+
+Como ejemplo, vamos a suponer que un proceso quiere abrir el fichero /etc/passwd que tiene una entrada por cada usuario del sistema y donde, entre otra información, 
+figura la contraseña del usuario cifrada. Cuando el núcleo inicia el análisis de la ruta, encuentra que empieza por / y pasa a leer el nodo-i asociado al directorio 
+raíz. Este nodo-i pasa a ser el nodo-i de trabajo y el núcleo verifica si corresponde a un directorio y si el proceso tiene permiso para buscar ficheros dentro de él. 
+Suponiendo que los permisos están en regla, el núcleo toma el siguiente elemento de la ruta, que es etc, y busca, dentro del directorio raíz, alguna entrada cuyo 
+nombre de fichero sea etc. Cuando el núcleo la encuentra, libera el nodo-i del directorio raíz y lee el nodo-i del fichero etc. En este nodo-i se refleja
+que etc es otro directorio y por lo tanto en él podemos buscar el fichero passwd, tercer elemento de la ruta. El núcleo, tras verificar los permisos de acceso a etc, 
+repite el mismo proceso de búsqueda para el nombre de fichero passwd y tras encontrarlo y verificar que es un fichero y no un directorio, como se esperaba a la vista 
+de su ruta, y que tenemos permiso para acceder a él, nos habilita una estructura para poder trabajar con ese fichero.
+
+### Ficheros especiales
+
+Los ficheros especiales, o ficheros de dispositivo, se utilizan para que los procesos se comuniquen con los dispositivos periféricos: discos, cintas, impresoras, 
+terminales, redes, etc.
+
+Hay dos familias de ficheros de dispositivo: ficheros modo bloque y ficheros modo carácter.
+
+**Los ficheros de dispositivo modo bloque** se ajustan a un modelo concreto: el dispositivo contiene un array de bloques de tamaño fijo —generalmente múltiplo de 512 bytes
+— y el núcleo gestiona una memoria intermedia —buffer caché, también traducido como antememoria— que acelera la velocidad de transferencia de los datos. La 
+transferencia de información entre el dispositivo y el núcleo se efectúa con mediación de la antememoria y el bloque es la unidad mínima que se transfiere en cada 
+operación de entrada/salida. Esta memoria intermedia se implementa vía software y no hay que confundirla con las memorias caché de acceso rápido de que disponen los 
+microprocesadores actuales. Ejemplos típicos de dispositivos modo bloque son los discos y las unidades de cinta.
+
+**En los ficheros de dispositivo modo carácter** la información no se organiza según una estructura concreta y es vista por el núcleo, o por el usuario, como una 
+secuencia lineal de bytes. En la transferencia de datos entre el núcleo y el dispositivo no participa la memoria intermedia y por lo tanto se realiza a menor 
+velocidad. Ejemplos típicos de dispositivos modo carácter son los terminales serie y las líneas de impresora. Un mismo dispositivo físico puede soportar los dos modos 
+de acceso: bloque y carácter, y de hecho esto suele ser habitual en el caso de los discos.
+
+Por otro lado, en el caso de los discos, si queremos realizar un acceso más organizado, debemos recurrir a las facilidades que brinda el sistema de ficheros y la 
+estructura de directorios que hay creada sobre él. Esto no nos impide un acceso de más bajo nivel a través de los ficheros de dispositivo asociados al disco. Este tipo 
+de acceso pasa por encima de la estructura del sistema de ficheros y trata directamente con el manejador del
+disco. Para Leffler [Leffler et al., ], el sistema de ficheros es un apartado más dentro del subsistema de entrada/salida.
+
+Los módulos del núcleo que gestionan la comunicación con los dispositivos se conocen como manejadores de dispositivo. Lo normal es que cada dispositivo tenga su 
+manejador propio, aunque puede haber manejadores que controlen a toda una familia de dispositivos con características comunes, por ejemplo, el manejador que controla 
+los terminales.
+
+El sistema también puede soportar dispositivos software —o seudodispositivos— que no tienen asociados un dispositivo físico. Por ejemplo, si una parte de la memoria 
+del sistema se gestiona como un dispositivo, los procesos que quieran acceder a esa zona de memoria tendrán que usar las mismas llamadas al sistema que hay para el 
+manejo de ficheros, pero sobre el fichero de dispositivo /dev/mem —fichero de dispositivo genérico para acceder a memoria—. En esta situación, la memoria es tratada 
+como un periférico más.
+
+Como ya hemos visto en epígrafes anteriores, los ficheros de dispositivo, al igual que el resto de los ficheros, tienen asociado un nodo-i. En el caso de los ficheros 
+ordinarios o de los directorios, el nodo-i nos indica los bloques donde se encuentran los datos del fichero, pero en el caso de los ficheros de dispositivo no hay 
+datos a los que referenciar. En su lugar, el nodo-i contiene dos números conocidos como major number y minor number.
+
+El major number indica el tipo de dispositivo de que se trata —disco, cinta, terminal, etc.— y el minor number indica el número de unidad dentro del dispositivo. En 
+realidad, estos números los utiliza el núcleo para buscar dentro de unas tablas —block device switch table y character device switch table— una colección de rutinas 
+que permiten manejar el dispositivo. Esta colección de rutinas constituyen realmente el manejador del dispositivo.
+Cuando se invoca a una llamada al sistema para realizar una operación de entrada/salida sobre un fichero especial, el núcleo se encarga de llamar al manejador de 
+dispositivo adecuado. Lo que ocurre a continuación es algo que compete al diseñador del manejador y es completamente transparente para el usuario.
+
+Naturalmente, nosotros también podemos convertirnos en diseñadores de manejadores y añadir a una arquitectura hardware determinada los dispositivos que necesitemos.
+
+### Tuberías con nombre
+
+Una tubería con nombre es un fichero con una estructura similar a la de un fichero ordinario. La diferencia principal con éstos es que los datos de una tubería son
+transitorios.
+
+Esto quiere decir que los datos desaparecen de la tubería a medida que son leídos. Las tuberías se utilizan para comunicar procesos. Lo normal es que un proceso abra 
+la tubería para escribir en ella y el otro para leer de ella. Los datos escritos en la tubería se leen en el mismo orden en el que fueron escritos, siguiendo la 
+disciplina de una hilera: el primer dato en entrar es el primero en salir2. La sincronización del acceso a la tubería es algo de lo que se encarga el núcleo.
+El almacenamiento de los datos en una tubería se realiza de la misma forma que en un fichero ordinario, excepto que el núcleo sólo utiliza las entradas directas de la 
+tabla de direcciones de bloque del nodo-i de la tubería. Por lo tanto, una tubería con nombre podrá almacenar 10 Kbytes a lo sumo —suponiendo bloques de 1.024 bytes—. 
+Esto no supone un problema grave, ya que los datos de la tubería son transitorios; sin embargo, si la velocidad a la que se introducen datos es mayor que la velocidad 
+de extracción, la tubería podría rebosar y perderse información.
+
+Los accesos de lectura/escritura en las tuberías se realizan con las mismas llamadas que empleamos para los ficheros ordinarios —open, close, read, write, etc.— 
+Además, estos accesos son de tipo atómico3, con lo que se garantiza el sincronismo en el caso de que varios procesos compitan concurrentemente por el uso de la misma 
+tubería. En contraposición a las tuberías con nombre tenemos las tuberías sin nombre que no tienen asociado ningún nombre de fichero y que sólo existen mientras algún 
+proceso está unido a ellas.
+
+Las tuberías sin nombre también actúan como un canal de comunicación entre dos procesos y tienen asociado un nodo-i mientras existen. Un ejemplo típico de tubería sin
+nombre es la que se crea desde el intérprete de órdenes a través del carácter de tubería |.
+
+```
+Por ejemplo,
+$ ls | sort -r
+```
+La línea de órdenes anterior le indica al intérprete que debe arrancar dos procesos: uno para ejecutar ls —listar por pantalla el contenido del directorio actual— y 
+otro para sort -r —filtro que lee líneas de texto de la entrada estándar y las presenta por pantalla en orden alfabético inverso—. Además, el intérprete debe crear una 
+tubería sin nombre a la que se unirán los procesos creados para ejecutar ls y sort. ls dirigirá su salida hacia la tubería y sort leerá datos de la tubería.
+
+Las tuberías sin nombre son creadas desde un proceso con la llamada pipe, mientras que las tuberías con nombre se crean con la orden mknod desde la línea de órdenes 
+del sistema o con la llamada mknod desde un proceso.
