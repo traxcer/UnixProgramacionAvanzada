@@ -438,3 +438,112 @@ tubería sin nombre a la que se unirán los procesos creados para ejecutar ls y 
 
 Las tuberías sin nombre son creadas desde un proceso con la llamada pipe, mientras que las tuberías con nombre se crean con la orden mknod desde la línea de órdenes 
 del sistema o con la llamada mknod desde un proceso.
+
+
+## Extensiones del sistema bsd
+
+La arquitectura del sistema de ficheros y los tipos de ficheros tal y como los hemos descrito hasta ahora se ajustan al modelo del unix System V de AT&T y a las 
+primeras versiones del unix de Berkeley.
+
+En la organización de los discos de la versión 4.4 de bsd, al igual que en versiones anteriores, cada disco puede contener uno o más sistemas de ficheros. Cada sistema 
+está definido mediante su superbloque, localizado al principio de la partición de disco dedicada al sistema. Dada la importancia de los datos contenidos en el 
+superbloque, éste está duplicado para evitar pérdidas de información en situaciones límite. Generalmente, la copia del superbloque no es referenciada, a menos que se 
+estropee el original.
+
+Para asegurar que los ficheros de tamaño 232 bytes se pueden manipular sin necesidad de recurrir a la entrada indirecta triple del nodo-i, el tamaño mínimo del bloque 
+pasa a ser de 4.096 bytes. Como sabemos, el tamaño del bloque se especifica en el superbloque y es posible manejar simultáneamente sistemas de ficheros con diferentes 
+tamaños de bloque. No obstante, el tamaño del bloque no puede cambiarse una vez que el sistema ha sido creado, a menos que se decida reinstalarlo de nuevo.
+
+En el sistema bsd se introduce una mejora en la organización del disco basada en el concepto de grupo de cilindros.
+
+### Grupo de cilindros
+
+En la organización de los sistemas de ficheros del bsd, cada disco físico se divide en una o más áreas, conocidas como grupo de cilindros. La figura 2.7 muestra un 
+disco dividido en 4 grupos de cilindros, cada uno de los cuales puede agrupar a uno o más cilindros físicos del disco. Cada grupo de cilindros contiene información de 
+control, que incluye una copia del superbloque, espacio para los nodos-i, un mapa de bits que refleja la ocupación de bloques dentro del grupo e información 
+estadística que describe el uso de los bloques dentro del grupo de cilindros. El número de nodos-i que tiene ese grupo debe ser asignado cuando éste es creado.
+
+El motivo de dividir el disco en grupos de cilindros es crear grupos de nodos-i que estén distribuidos por todo el disco, en lugar de colocarlos todos al principio del 
+sistema, como ocurre en otras versiones de unix. Así, los nodos-i estarán en bloques situados físicamente cerca de los bloques de fichero a los que hacen referencia.
+Con esto ganamos en velocidad de acceso a los datos del fichero, ya que los desplazamientos de las cabezas lectoras para pasar de los bloques donde están situados los 
+nodos-i a los bloques de datos serán más cortos. Además, la seguridad del sistema ante pérdidas accidentales de información se ve incrementada, ya que si se dañan los 
+bloques físicos de algunos nodos-i, no se habrán perdido todos los nodos-i.
+
+Toda la información de control sobre el grupo de cilindros puede situarse al principio del mismo; sin embargo, ésta no es la solución más segura, ya que la información 
+de control de todos los grupos de cilindros estaría situada sobre el mismo plato del disco. Si se daña ese plato se perderá toda la información de configuración del 
+disco y por lo tanto el resto de la información del mismo. Esto justifica que la información de control se almacene en una posición, con respecto al inicio del grupo 
+de cilindros, diferente para cada grupo. La posición de cada grupo sucesivo se calcula para que esté alejada al menos un sector con respecto al grupo anterior. Así, la 
+información del disco estará distribuida en diferentes platos y sectores, por lo que la pérdida de uno de ellos no va ocasiona el daño de todo el disco.
+
+El espacio que hay entre el inicio del grupo de cilindros y el inicio de la información de control del grupo se aprovecha para almacenar datos. Sólo en el caso del 
+primer grupo la información de control está situada al principio del mismo. Como vemos, el diseño de los sistemas de ficheros del bsd responde a mejoras en tiempos de 
+acceso y seguridad.
+
+![Captura de pantalla 2023-02-21 a las 17 41 38](https://user-images.githubusercontent.com/4338310/220406615-bafd88bd-c5ec-42a3-a66b-771cbd40c4ce.png)
+
+
+## Tablas de control de acceso a los ficheros
+
+Además de la tabla de nodos-i, el núcleo mantiene en memoria otras dos tablas que contienen información necesaria para poder manipular un fichero: la tabla de ficheros 
+y la tabla de descriptores de fichero.
+
+### Tabla de nodos-i
+
+Como ya hemos visto, la tabla de nodos-i es una copia en memoria de la lista de nodos-i que hay en el disco, a la que se le añade información adicional. Esta tabla se 
+copia del disco para conseguir un acceso más rápido a sus componentes.
+
+### Tabla de ficheros
+
+La tabla de ficheros es una estructura global del núcleo y en ella hay una entrada por cada fichero distinto que los procesos del núcleo o los procesos del usuario 
+tienen abiertos. Cada vez que un proceso abre o crea un fichero nuevo, se reserva una nueva entrada en la tabla.
+
+![Captura de pantalla 2023-02-21 a las 17 43 36](https://user-images.githubusercontent.com/4338310/220407070-1d743e4b-871d-4300-b17a-811a32fd9ba2.png)
+
+La tabla de ficheros es una estructura de datos orientada a objetos [Leffler et al]. Cada entrada de la tabla contiene un bloque de datos y un array de punteros a 
+funciones que traducen las operaciones genéricas que se pueden realizar con los ficheros: leer, escribir, situar el puntero de lectura/escritura, cerrar, posicionar, 
+etc., en acciones concretas asociadas a cada tipo de fichero. Las operaciones que se deben implementar por cada tipo son:
+- Funciones para leer —read— y escribir —write— en un fichero.
+- Una función para realizar la multiplexación síncrona de la E/S —select—.
+- Una función para controlar los modos de E/S —ioctl—.
+- Una función para cerrar el fichero —close—.
+
+Se puede observar que no hay ninguna rutina de apertura de ficheros en esta definición de objeto. Esto es debido a que el sistema sólo empieza a tratar los elementos 
+de esta tabla como objetos a partir de que se haya abierto el fichero.
+
+Cada entrada de la tabla de ficheros tiene también un puntero a una estructura de datos que contiene información del estado actual del fichero. Entre otros, se deben 
+tener en cuenta los siguientes campos:
+- Nodo-i asociado a la entrada de la tabla.
+- Desplazamientos de lectura y escritura que indican sobre qué byte del fichero van a tener efecto las siguientes operaciones de lectura o escritura. Estos desplazamientos quedan actualizados cada vez que se realiza una de las operaciones anteriores.
+- Permisos de acceso para el proceso que ha abierto el fichero.
+- Indicadores del modo de apertura del fichero, que se verificarán cada vez que se realice una operación sobre el mismo para ver si es congruente. Por ejemplo, si un 
+fichero se abre para ser leído solamente, el núcleo no permitirá que se realicen operaciones de escritura sobre él.
+- Un contador para indicar cuántas entradas de la tabla de descriptores tiene asociadas esta entrada de la tabla de ficheros.
+
+### Tabla de descriptores de fichero
+
+La tabla de descriptores de fichero es una estructura local a cada proceso. Esta tabla identifica todos los ficheros abiertos por un proceso. Cuando utilizamos las 
+llamadas open, creat, dup o link, el núcleo devuelve un descriptor de fichero, que es un índice para poder acceder a las entradas de la tabla anterior. En cada una de 
+las entradas de la tabla hay un puntero a una entrada de la tabla de ficheros del sistema.
+
+Los procesos no manipulan directamente ninguna de las tablas anteriores —esto lo hace el núcleo—, sino que acceden a los ficheros a través de un descriptor asociado, 
+que es un número. Cuando un proceso utiliza una llamada para realizar una operación sobre un fichero, le pasa al núcleo el descriptor de ese fichero. El núcleo usa 
+este número para acceder a la tabla de descriptores de fichero del proceso y buscar en ella cuál es la entrada de la tabla de ficheros que le da acceso a su nodo-i.
+
+Este mecanismo puede parecer artificioso, pero ofrece una gran flexibilidad cuando queremos que un proceso acceda simultáneamente a un mismo fichero en modos 
+distintos, o que varios procesos compartan ficheros.
+
+El tamaño de la tabla de descriptores tiene un valor limitado para cada proceso. Este valor depende de la configuración del sistema —consulte limits, constante 
+OPEN_MAX—, aunque está bastante extendido que sea 20. Así, un proceso no puede tener abiertos más de OPEN_MAX ficheros distintos en un instante determinado. Si algún 
+proceso necesita manejar más de OPEN_MAX ficheros, será obligatorio cerrar algunos —por ejemplo, los menos usados— para poder abrir otros, ya que todos no pueden estar 
+abiertos simultáneamente. Esta situación se plantea, por ejemplo, cuando intentamos compilar un proyecto que consta de más de OPEN_MAX ficheros distribuidos entre 
+ficheros de cabecera, ficheros fuente, ficheros objeto y bibliotecas. El compilador debe arreglárselas para generar el fichero ejecutable sin imponer límites al número 
+de ficheros de nuestro proyecto.
+
+Cuando se arranca un proceso en unix, el sistema le asigna tres ficheros que ocupan las tres primeras entradas de la tabla de descriptores. Estos ficheros se conocen 
+como fichero estándar de entrada —por lo general es el teclado de un terminal— que tiene asociado el descriptor número 0, el fichero estándar de salida —la pantalla de 
+un terminal— que tiene asociado el descriptor número 1, y el fichero estándar de salida de mensajes de error (también suele estar asociado a la pantalla de un terminal 
+que tiene asociado el descriptor número 2).
+
+![Captura de pantalla 2023-02-21 a las 17 48 45](https://user-images.githubusercontent.com/4338310/220408331-d91252a0-10c4-4f31-a02d-af647aa212e2.png)
+
+
