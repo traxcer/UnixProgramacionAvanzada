@@ -546,4 +546,22 @@ que tiene asociado el descriptor número 2).
 
 ![Captura de pantalla 2023-02-21 a las 17 48 45](https://user-images.githubusercontent.com/4338310/220408331-d91252a0-10c4-4f31-a02d-af647aa212e2.png)
 
-
+Estos ficheros están asociados por defecto a todo proceso y pueden cambiarse para que tomen otros valores. Uno de los procedimientos consiste en intercalar en el 
+código del programa las llamadas necesarias para modificar la tabla de descriptores. Este procedimiento lo podremos emplear sólo cuando dispongamos del código fuente 
+del programa y aun así no es muy recomendable. El otro procedimiento lo facilita el sistema a través  de la redirección y las tuberías. Con los caracteres de 
+redirección **<** y **>** podemos hacer que un programa codificado para trabajar con los ficheros estándar pase a trabajar con los ficheros que nos interesen. Por 
+ejemplo, la orden:
+```
+$ ls > directorio
+```
+hace que la salida estándar de ls —la pantalla— se redirija hacia el fichero directorio, y la orden:
+```
+$ cc programa.c 2> errores
+```
+redirige la salida estándar de errores del compilador —descriptor 2 que por defecto tiene asociada la pantalla— hacia el fichero errores.
+Como vimos en el párrafo dedicado a las tuberías con nombre, el carácter |, usado en la línea de órdenes, también permite modificar los ficheros estándar asociados a 
+un programa. Así, la línea:
+```
+$ ls | grep root
+```
+hace que **ls** dirija su salida hacia una tubería sin nombre y que **grep** lea líneas de la misma tubería.
