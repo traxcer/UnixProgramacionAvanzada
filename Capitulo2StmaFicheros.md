@@ -613,9 +613,9 @@ Con objeto de construir un sistema de ficheros sobre alguna de las particiones d
 que nos dé acceso a esa partición. Si estamos haciendo la primera instalación de unix, no es necesario llevar a cabo esta tarea, puesto que el programa de instalación 
 se encarga de crear los ficheros de dispositivo necesarios. Sin embargo, en ampliaciones de una instalación ya realizada, hay que tener presentes estos aspectos.
 La forma de crear los ficheros de dispositivo es mediante la orden mknod. Su sintaxis es la siguiente:
-´´´
+```
 $ /etc/mknod nombre c|b major minor
-´´´
+```
 **nombre** es el nombre del fichero de dispositivo que se va a crear; **c|b** indica el tipo de acceso: modo bloque o modo carácter, sólo uno debe estar presente; 
 **major** es el major number del dispositivo y **minor** su minor number.
 
@@ -629,7 +629,7 @@ la primera partición del primer disco físico, hd02 a la segunda partición, et
 hd10, la primera partición del segundo disco será hd11, y así sucesivamente.
 
 Podemos ver los ficheros de dispositivo destinados a disco mediante la orden:
-´´´
+```
 $ ls -al /dev/hd*
 brw------- 2 sysinfo sysinfo 1, 0 Mar 14 1989 /dev/hd00
 brw------- 2 sysinfo sysinfo 1, 15 Mar 14 1989 /dev/hd01
@@ -639,7 +639,7 @@ brw------- 2 sysinfo sysinfo 1, 39 Mar 14 1989 /dev/hd04
 brw------- 2 sysinfo sysinfo 1, 47 Mar 14 1989 /dev/hd0a
 brw-r----- 2 dos 
 sysinfo 1, 55 Mar 14 1989 /dev/hd0d
-´´´
+```
 En las columnas 5 y 6 de la salida que produce la orden ls podemos ver cuáles son los major y minor number de los distintos ficheros de dispositivo. En el ejemplo 
 anterior, todos los ficheros de disco tienen el major number 1 y los minor number 0, 15, 23, 31, 39,
 47 y 55, respectivamente.
@@ -648,7 +648,7 @@ También podemos ver que estos ficheros corresponden a dispositivos modo bloque,
 hay dispositivos que pueden ser referenciados a través de ficheros de dispositivo modo bloque o modo carácter. En concreto, los discos son de ese tipo de dispositivos, 
 por lo que existe toda una familia de ficheros paralela a la anterior. Los nombres de estos ficheros responden al esquema rhd##, donde ## representa dos números con el 
 significado ya explicado. Para visualizar estos dispositivos podemos escribir:
-´´´
+```
 $ ls -al /dev/rh*
 crw------- 2 sysinfo sysinfo 1, 0 Mar 14 1989 /dev/rhd00
 crw------- 2 sysinfo sysinfo 1, 15 Mar 14 1989 /dev/rhd01
@@ -658,7 +658,7 @@ crw------- 2 sysinfo sysinfo 1, 39 Mar 14 1989 /dev/rhd04
 crw------- 2 sysinfo sysinfo 1, 47 Mar 14 1989 /dev/rhd0a
 crw-r----- 2 dos 
 sysinfo 1, 55 Mar 14 1989 /dev/rhd0d
-´´´
+```
 Se puede apreciar que los números asociados a estos ficheros son los mismos que los del modo bloque. La única diferencia es que el acceso a través de estos nuevos 
 ficheros se va a realizar carácter a carácter, sin la intervención de la memoria intermedia, por lo que responderán de una forma más lenta.
 
