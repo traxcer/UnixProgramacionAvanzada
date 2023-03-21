@@ -565,3 +565,100 @@ un programa. Así, la línea:
 $ ls | grep root
 ```
 hace que **ls** dirija su salida hacia una tubería sin nombre y que **grep** lea líneas de la misma tubería.
+
+
+## Administración de los sistemas de ficheros
+
+Comentaré a continuación algunas de las tareas que se deben realizar para crear un sistema de ficheros y asegurar su correcto funcionamiento. Estos trabajos no 
+corresponden al usuario del sistema, sino al administrador, pero es útil conocerlos para tener una idea más adecuada del funcionamiento del sistema unix. Sobre todo, 
+el usuario neófito podrá obtener respuesta a algunas de las preguntas que se le plantean cuando se enfrenta al sistema por primera vez. Hay que indicar también que las 
+órdenes y procesos que se describirán a continuación varían de un sistema a otro, por lo que la última palabra la tiene siempre la documentación técnica del sistema, a 
+la que deberá acudir el lector en caso de duda.
+
+### Particiones del disco
+
+La primera idea que se debe manejar es la posibilidad de que en un mismo disco físico coexistan varios sistemas operativos sin que interfieran unos con otros. Esto se 
+consigue dedicando una partición del disco a cada uno de los sistemas. Un sistema puede ocupar una o varias particiones, dependiendo de cómo configuremos el disco. 
+***Las particiones son, por lo tanto, divisiones del disco independientes unas de las otras y compete al administrador del sistema decidir qué va a contener cada una 
+de ellas***.
+
+Las particiones deben crearse antes de hacer ninguna instalación sobre el disco, ya que toda la información que éste contenga dejará de estar accesible. Cada sistema 
+dispone de un programa que permite crear la tabla de particiones. En el caso del sistema Dos o de algunas versiones de unix para PC, el programa es fdisk. Este 
+programa presenta un menú que permite definir el tamaño dedicado a cada partición, visualizar el total de particiones que tenemos definidas, definir una partición como 
+partición activa, etc. 
+
+No es necesario trocear todo el disco para poder trabajar con él. Si sólo necesitamos una parte, podemos crear una partición y posponer la creación de nuevas 
+particiones para cuando tengamos necesidad de ellas. Igualmente, podemos dedicar la totalidad del disco a una sola partición.
+
+Si en el disco hay instalados varios sistemas operativos, el usuario puede preguntarse cuál es el sistema que se carga al arrancar el ordenador. Para resolver este 
+problema, fdisk permite definir una partición activa; es decir, una partición en la que se busca el sistema operativo en el momento de arranque. Naturalmente, para que 
+una partición sea autoarrancable, debe tener un sector o bloque de boot y el archivo o archivos del sistema. Esto lo especificamos al dar formato a la partición.
+
+### Formato del disco
+
+Una vez establecidas las particiones del disco, podemos pasar a instalar sistemas de ficheros sobre ellas. __Dependiendo del sistema operativo__ que vaya a albergar 
+cada partición, será necesario darle un tipo de formato u otro. 
+
+Cada sistema tiene su propio programa para formatear; así, **dos** dispone del programa format que se utiliza para dar formato a discos duros y disquetes. En unix no 
+hay un programa estándar para formatear; cada fabricante suministra un conjunto de herramientas de administración del sistema y los aspectos de formateo pueden estar 
+incluidos dentro de ellas. Así, por ejemplo, **sun** ofrece a sus usuarios el programa diag, que  incluye la opción format para dar formato a una partición. **sco** da 
+formato a las particiones en el momento de instalar el sistema. 
+
+Otra de las verificaciones que debemos realizar antes de empezar a instalar sistemas de ficheros sobre el disco es revisar el estado de sus sectores y generar una 
+tabla de sectores defectuosos. El programa que realiza esta operación también depende de la versión del sistema que estamos manejando. Algunos ejemplos son: bad144 y badsect para el unix de Berkeley, badblk para AT&T, badtrk para sco, etc.
+
+### Ficheros de dispositivo del disco
+
+Con objeto de construir un sistema de ficheros sobre alguna de las particiones de disco, es necesario que en el directorio /dev esté presente el fichero de dispositivo 
+que nos dé acceso a esa partición. Si estamos haciendo la primera instalación de unix, no es necesario llevar a cabo esta tarea, puesto que el programa de instalación 
+se encarga de crear los ficheros de dispositivo necesarios. Sin embargo, en ampliaciones de una instalación ya realizada, hay que tener presentes estos aspectos.
+La forma de crear los ficheros de dispositivo es mediante la orden mknod. Su sintaxis es la siguiente:
+´´´
+$ /etc/mknod nombre c|b major minor
+´´´
+**nombre** es el nombre del fichero de dispositivo que se va a crear; **c|b** indica el tipo de acceso: modo bloque o modo carácter, sólo uno debe estar presente; 
+**major** es el major number del dispositivo y **minor** su minor number.
+
+Para usar mknod debemos conocer los major y minor number de los dispositivos que puede manejar nuestro sistema. Esta numeración tampoco es algo estándar, por lo que
+debemos consultar la documentación técnica del fabricante. De forma estándar, en la sección 7 del manual se documentan los ficheros de dispositivo que maneja el 
+sistema, así como el significado de sus números asociados.
+
+De cara a **los nombres de los dispositivos** se suelen utilizar algunos convenios. Así, los ficheros de dispositivo de los discos duros se llaman hd##, donde ##  
+representa dos números que indican la unidad de disco y la partición a la que se refieren. Por ejemplo, hd00 se refiere a la totalidad del primer disco físico, hd01 a 
+la primera partición del primer disco físico, hd02 a la segunda partición, etc. Para referirnos a la totalidad del segundo disco, emplearemos el fichero de dispositivo 
+hd10, la primera partición del segundo disco será hd11, y así sucesivamente.
+
+Podemos ver los ficheros de dispositivo destinados a disco mediante la orden:
+´´´
+$ ls -al /dev/hd*
+brw------- 2 sysinfo sysinfo 1, 0 Mar 14 1989 /dev/hd00
+brw------- 2 sysinfo sysinfo 1, 15 Mar 14 1989 /dev/hd01
+brw------- 2 sysinfo sysinfo 1, 23 Mar 14 1989 /dev/hd02
+brw------- 2 sysinfo sysinfo 1, 31 Mar 14 1989 /dev/hd03
+brw------- 2 sysinfo sysinfo 1, 39 Mar 14 1989 /dev/hd04
+brw------- 2 sysinfo sysinfo 1, 47 Mar 14 1989 /dev/hd0a
+brw-r----- 2 dos 
+sysinfo 1, 55 Mar 14 1989 /dev/hd0d
+´´´
+En las columnas 5 y 6 de la salida que produce la orden ls podemos ver cuáles son los major y minor number de los distintos ficheros de dispositivo. En el ejemplo 
+anterior, todos los ficheros de disco tienen el major number 1 y los minor number 0, 15, 23, 31, 39,
+47 y 55, respectivamente.
+
+También podemos ver que estos ficheros corresponden a dispositivos modo bloque, el carácter b de la primera columna así lo indica. Como vimos en apartados anteriores, 
+hay dispositivos que pueden ser referenciados a través de ficheros de dispositivo modo bloque o modo carácter. En concreto, los discos son de ese tipo de dispositivos, 
+por lo que existe toda una familia de ficheros paralela a la anterior. Los nombres de estos ficheros responden al esquema rhd##, donde ## representa dos números con el 
+significado ya explicado. Para visualizar estos dispositivos podemos escribir:
+´´´
+$ ls -al /dev/rh*
+crw------- 2 sysinfo sysinfo 1, 0 Mar 14 1989 /dev/rhd00
+crw------- 2 sysinfo sysinfo 1, 15 Mar 14 1989 /dev/rhd01
+crw------- 2 sysinfo sysinfo 1, 23 Mar 14 1989 /dev/rhd02
+crw------- 2 sysinfo sysinfo 1, 31 Mar 14 1989 /dev/rhd03
+crw------- 2 sysinfo sysinfo 1, 39 Mar 14 1989 /dev/rhd04
+crw------- 2 sysinfo sysinfo 1, 47 Mar 14 1989 /dev/rhd0a
+crw-r----- 2 dos 
+sysinfo 1, 55 Mar 14 1989 /dev/rhd0d
+´´´
+Se puede apreciar que los números asociados a estos ficheros son los mismos que los del modo bloque. La única diferencia es que el acceso a través de estos nuevos 
+ficheros se va a realizar carácter a carácter, sin la intervención de la memoria intermedia, por lo que responderán de una forma más lenta.
+
