@@ -641,8 +641,7 @@ brw-r----- 2 dos
 sysinfo 1, 55 Mar 14 1989 /dev/hd0d
 ```
 En las columnas 5 y 6 de la salida que produce la orden ls podemos ver cuáles son los major y minor number de los distintos ficheros de dispositivo. En el ejemplo 
-anterior, todos los ficheros de disco tienen el major number 1 y los minor number 0, 15, 23, 31, 39,
-47 y 55, respectivamente.
+anterior, todos los ficheros de disco tienen el major number 1 y los minor number 0, 15, 23, 31, 39, 47 y 55, respectivamente.
 
 También podemos ver que estos ficheros corresponden a dispositivos modo bloque, el carácter b de la primera columna así lo indica. Como vimos en apartados anteriores, 
 hay dispositivos que pueden ser referenciados a través de ficheros de dispositivo modo bloque o modo carácter. En concreto, los discos son de ese tipo de dispositivos, 
@@ -661,4 +660,133 @@ sysinfo 1, 55 Mar 14 1989 /dev/rhd0d
 ```
 Se puede apreciar que los números asociados a estos ficheros son los mismos que los del modo bloque. La única diferencia es que el acceso a través de estos nuevos 
 ficheros se va a realizar carácter a carácter, sin la intervención de la memoria intermedia, por lo que responderán de una forma más lenta.
+
+Para los sistemas basados en el unix de AT&T, los ficheros de acceso al disco se encuentran, además, en los directorios /dev/dsk y /dev/rdsk. Ambos directorios 
+contienen los mismos ficheros; el primero está dedicado a los ficheros de acceso al disco en modo bloque, y el segundo, a los ficheros de acceso en modo carácter. Los 
+nombres de los ficheros responden al esquema #s#. El primer número indica el número de disco físico, y el segundo, la partición. Para algunos sistemas, estos números 
+representan el manejador y la sección dentro del manejador. El significado real depende, como siempre, del sistema que estemos manejando.
+Algunos de los ficheros que hay en el directorio /dev/dsk son:
+```
+$ ls -al /dev/dsk/*s*
+brw------- 2 sysinfo sysinfo 1, 0 Mar 14 1989 /dev/dsk/0s0
+brw------- 2 sysinfo sysinfo 1,15 Mar 14 1989 /dev/dsk/0s1
+brw------- 2 sysinfo sysinfo 1,23 Mar 14 1989 /dev/dsk/0s2
+brw------- 2 sysinfo sysinfo 1,31 Mar 14 1989 /dev/dsk/0s3
+brw------- 2 sysinfo sysinfo 1,39 Mar 14 1989 /dev/dsk/0s4
+brw------- 2 sysinfo sysinfo 1,47 Mar 14 1989 /dev/dsk/0sa
+brw-r----- 2 dos 
+sysinfo 1,55 Mar 14 1989 /dev/dsk/0sd
+```
+
+Podemos ver que los major y minor number coinciden con los que presentan los ficheros con la forma hd##; en realidad, se trata de los mismos ficheros. En efecto, tal y 
+como vemos en la segunda columna, cada uno de los ficheros tiene un total de dos enlaces, uno para el fichero de la forma /dev/hd## y otro para el fichero de la forma 
+/dev/dsk/#s#.
+
+En lo que respecta a los ficheros de dispositivo de la forma /dev/rdsk/#s#, hay que decir que son los mismos estudiados en la forma /dev/rhd##. Para crear un fichero 
+especial de dispositivo de disco mediante mknod, habrá que escribir algo parecido a:
+```
+$ mknod /dev/hd02 b 1 23
+```
+
+La creación de ficheros de dispositivo con la ayuda de mknod implica el conocimiento de los números major device number y minor device number. Estos números están 
+documentados en los manuales del fabricante y están asignados de una forma bastante arbitraria.
+Para que al usuario le resulte mas cómodo crear los ficheros sin necesidad de indagar cuáles son los números que debe pasar al programa mknod, se le suministra un 
+programa del intérprete de órdenes que crea de forma automática todos los ficheros de una familia de dispositivos. Este programa es mkdev y está en el directorio /etc 
+o en /dev. La forma de invocarlo será:
+```
+$ mkdev hd
+```
+para crear todos los ficheros del tipo hd## y
+```
+$ mkdev rhd
+```
+para crear todos los ficheros del tipo rhd##, y así para otras familias de ficheros, entre las que pueden estar ficheros de dispositivo de terminales serie, cintas, etc.
+
+### Construcción de un sistema de Ficheros
+
+En estos momentos, el disco está preparado para crear un sistema de ficheros sobre alguna de sus particiones, para ello debemos usar el programa estándar mkfs. mkfs da 
+formato a la partición reservando el primer bloque como bloque de boot, crea el superbloque con la lista de bloques libres, la tabla de nodos-i y los mapas de 
+direcciones de los bloques de datos. También crea los directorios raíz y lost+found para el sistema de ficheros. La sintaxis de la llamada al programa dependerá del 
+sistema en el que trabajemos; en el caso más general, queda como sigue:
+```
+$ /etc/mkfs [-L|-S] special size [nsect ntrack blksize fragsize ncpg minfree rps nbpi]
+```
+
+• special es el fichero de dispositivo de la partición o sección del disco donde se va a construir el sistema de ficheros.
+• size es el total de bloques que tendrá el sistema. El tamaño del bloque se define mediante la constante BSIZE del fichero <sys/param.h>.
+• nsect es el número de sectores por pista.
+• track es el número de pistas por cilindro.
+• blksize es el tamaño principal del bloque. Debe ser una potencia de 2 comprendida entre 4.096 y 8.192.
+• fragsize representa la menor cantidad de disco que se le puede asignar a un fichero. Su valor debe ser una potencia de 2 comprendida entre BSIZE y MAXBSIZE.
+• ncp es el número de cilindros de disco que tendrá cada grupo de cilindros. Aplicable sólo a sistemas basados en bsd.
+• minfree es el porcentaje mínimo de disco libre permitido. Cuando el porcentaje de disco libre es inferior a esta cantidad, sólo el superusuario puede ocupar bloques 
+de datos. Esto garantiza que el sistema no se bloquea por falta de espacio libre. El valor por defecto de este campo suele ser del 10%.
+• rps es la velocidad angular del disco especificada en revoluciones por segundo.
+• nbpi es el número mínimo de bytes de la zona de datos que referencia cada nodo-i. El total de nodos-i se calcula en función del tamaño del sistema de ficheros.
+
+Las opciones -L y -S le indican a mkfs qué tipo de fichero de directorio debe crear: L para directorios con el formato bsd, directorios que pueden contener nombres de 
+fichero de hasta 255 caracteres; S para ficheros con el formato AT&T, donde el nombre de fichero ocupa sólo 14 caracteres. Si no se especifica, mkfs crea directorios 
+del mismo tipo que los del directorio raíz que ya esté instalado.
+
+Otra forma de invocar a mkfs es la siguiente:
+```
+$ /etc/mkfs [-L|-S] special proto [nsect ntrack blksize fragsize ncpg minfree rps nbpi]
+````
+donde aparece como novedad el campo proto. proto es un fichero prototipo con datos para mkfs y se compone de elementos separados por espacios en blanco o por 
+caracteres de nueva línea. A continuación mostramos un ejemplo de fichero prototipo:
+```
+/etc/boot
+4872 110
+d--777 3 1
+usr d--777 3 1
+sh ---755 3 1 /bin/sh
+ken d--755 6 1
+$
+b0 b--644 3 1 0 0
+c0 c--644 3 1 0 0
+$
+$
+```
+La primera línea es el nombre del fichero que se va a copiar en el bloque número cero como programa de boot —/etc/boot—. Si el nombre es "", no se instala ningún 
+programa de boot. El segundo elemento es el tamaño en bloques del sistema —4.872 bloques—. A continuación viene el tamaño de la lista de nodos-i especificado en 
+bloques (110 bloques dedicados a nodos-i). La línea tercera contiene la especificación del directorio raíz. Las especificaciones para ficheros se componen de elementos 
+que informan sobre el modo del fichero, el identificador de usuario —UID—, identificador de grupo —GID— y el contenido inicial del fichero. La sintaxis del campo 
+contenido depende del modo del fichero. 
+
+El campo de modo está formado por una cadena de 6 caracteres. El primer carácter especifica el tipo de fichero —los caracteres -bcd indican que se trata de un fichero: 
+normal, de dispositivo modo bloque, de dispositivo modo carácter o directorio, respectivamente—. El segundo carácter es una u o un - para indicar si está o no activo 
+el bit cambiar el identificador de usuario en ejecución. El tercer carácter vale g o -, según esté o no activo el bit cambiar el identificador de grupo en ejecución. 
+Los restantes tres caracteres del campo modo son tres dígitos en octal que indican los permisos de lectura, escritura y ejecución para el propietario del fichero, el 
+grupo al que pertenece el propietario y el resto de los usuarios. Para más información sobre el campo modo, consultar la página chmod(2) del manual.
+
+Los dos números decimales que siguen al campo modo son el identificador de usuarioy de grupo del propietario del fichero.
+
+Así, por ejemplo, en el fichero anterior, la línea usr d–777 3 1 indica que se debe crear en el nuevo sistema de ficheros un directorio usr que depende del directorio 
+raíz, que no tiene inactivos los bits cambiar el UID y cambiar el GID, sobre el que todos los usuarios tienen permisos de lectura, escritura y ejecución, y cuyo 
+propietario tiene el identificador de usuario número 3 e identificador de grupo número 1.
+
+Si el fichero es de tipo ordinario, en la misma línea debe aparecer la ruta del fichero cuyo contenido se va a copiar en el nuevo sistema de ficheros. Así, en el 
+ejemplo anterior, la línea sh –-755 3 1 /bin/sh le indica a mkfs que en el directorio /usr del nuevo sistema de ficheros debe crearse el fichero sh, que es una copia 
+del fichero /bin/sh del sistema actual.
+
+Si el fichero es de dispositivo en modo bloque o carácter, en la misma línea deben aparecer el major number y el minor number de dispositivo correspondiente.
+
+Si el fichero a crear es un directorio, el programa mkfs reserva en él las dos primeras entradas para los ficheros . y .., y a continuación lee de forma recursiva la 
+lista de ficheros que se deben crear en ese directorio y sus subdirectorios. Para indicar que en un directorio no hay más entradas, se utiliza el carácter $.
+
+Ejemplos de llamadas a mkfs son los siguientes:
+```
+$ mkfs /dev/hd03 4872 48 20 8192 1024 16 10 66 2048
+```
+La orden anterior crea un sistema de ficheros en la sección tres del primer disco y lo configura con los siguientes parámetros: 4.872 bloques, 48 sectores por pista, 
+20 pistas por cilindro, 8.192 bytes por bloque, 1.024 bytes de fragmento mínimo manejable, 16 cilindros por grupo de cilindros, 10% mínimo libre, 66 rps velocidad de 
+giro del disco y 2.048 bytes mínimo direccionable por cada nodo-i.
+
+Si queremos crear un sistema de ficheros con las características anteriores y con una configuración de ficheros como la del fichero prototipo anterior, haríamos una llamada como la siguiente:
+```
+$ mkfs /dev/hd03 /stand/diskboot 48 20 8192 1024 16 10 66 2048
+```
+donde /stand/diskboot es el fichero prototipo.
+
+### Comprobación del estado de un sistema de ficheros
 
